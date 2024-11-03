@@ -1,0 +1,22 @@
+services:
+  bot:
+    env_file:
+      - .env
+    build:
+      context: .
+    ports:
+      - "8080:8080"
+    expose:
+      - "8080"
+    platform: linux/amd64
+    environment:
+      LINKEDIN_EMAIL: ${LINKEDIN_EMAIL}
+      LINKEDIN_PASSWORD: ${LINKEDIN_PASSWORD}
+      STYLE_CHOICE: ${STYLE_CHOICE}
+      SEC_CH_UA: ${SEC_CH_UA}
+      SEC_CH_UA_PLATFORM: ${SEC_CH_UA_PLATFORM}
+      USER_AGENT: ${USER_AGENT}
+      WEBHOOK_URI: ${WEBHOOK_URI}
+      WEBHOOK_TOKEN: ${WEBHOOK_TOKEN}
+      BOT_ID: ${BOT_ID}
+      API_PORT: ${API_PORT}

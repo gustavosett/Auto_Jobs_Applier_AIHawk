@@ -3,8 +3,9 @@ import os
 import random
 import sys
 import time
-
+from selenium.webdriver.chrome.options import Options
 from selenium import webdriver
+from src.config import settings
 from loguru import logger
 
 from app_config import MINIMUM_LOG_LEVEL
@@ -113,15 +114,14 @@ def scroll_slow(driver, scrollable_element, start=0, end=3600, step=300, reverse
 
 def chrome_browser_options():
     logger.debug("Setting Chrome browser options")
-    ensure_chrome_profile()
-    options = webdriver.ChromeOptions()
-    options.add_argument("--start-maximized")
+    # ensure_chrome_profile()
+    options = Options()
+    options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--ignore-certificate-errors")
     options.add_argument("--disable-extensions")
     options.add_argument("--disable-gpu")
-    options.add_argument("window-size=1200x800")
     options.add_argument("--disable-background-timer-throttling")
     options.add_argument("--disable-backgrounding-occluded-windows")
     options.add_argument("--disable-translate")
@@ -134,22 +134,14 @@ def chrome_browser_options():
     options.add_argument("--disable-animations")
     options.add_argument("--disable-cache")
     options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
+    
+    options.binary_location = settings.CHROME_PATH
 
     prefs = {
         "profile.default_content_setting_values.images": 2,
         "profile.managed_default_content_settings.stylesheets": 2,
     }
     options.add_experimental_option("prefs", prefs)
-
-    if len(chromeProfilePath) > 0:
-        initial_path = os.path.dirname(chromeProfilePath)
-        profile_dir = os.path.basename(chromeProfilePath)
-        options.add_argument('--user-data-dir=' + initial_path)
-        options.add_argument("--profile-directory=" + profile_dir)
-        logger.debug(f"Using Chrome profile directory: {chromeProfilePath}")
-    else:
-        options.add_argument("--incognito")
-        logger.debug("Using Chrome in incognito mode")
 
     return options
 

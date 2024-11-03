@@ -1,10 +1,10 @@
-import os
+from src.config import settings
 import re
 import sys
 from pathlib import Path
 import yaml
 import click
-from selenium import webdriver
+from seleniumwire import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.common.exceptions import WebDriverException
@@ -148,12 +148,25 @@ class FileManager:
             result['resume'] = resume_file
 
         return result
+    
+def interceptor(request):
+    headers = {
+        "sec-ch-ua": settings.SEC_CH_UA, 
+        "SEC_CH_UA_PLATFORM": settings.SEC_CH_UA_PLATFORM, 
+        "user-agent": settings.USER_AGENT, 
+    }
+    for key, value in request.headers.items():
+        if key in headers:
+            del request.headers[key]
+            request.headers[key] = headers[key]
 
 def init_browser() -> webdriver.Chrome:
     try:
         options = chrome_browser_options()
         service = ChromeService(ChromeDriverManager().install())
-        return webdriver.Chrome(service=service, options=options)
+        driver = webdriver.Chrome(service=service, options=options)
+        driver.request_interceptor = interceptor
+        return driver
     except Exception as e:
         raise RuntimeError(f"Failed to initialize browser: {str(e)}")
 

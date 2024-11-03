@@ -1,6 +1,8 @@
-import random
+import os
+from src.config import settings
+from src.api import TokenManager
+from src.webhook import WebhookManager
 import time
-
 from selenium.common.exceptions import NoSuchElementException, TimeoutException, NoAlertPresentException, TimeoutException, UnexpectedAlertPresentException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -8,6 +10,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from loguru import logger
 
+WEBHOOK = WebhookManager(
+    webhook_uri=settings.WEBHOOK_URI,
+    bot_id=settings.BOT_ID,
+)
 
 class AIHawkAuthenticator:
 
@@ -32,6 +38,7 @@ class AIHawkAuthenticator:
             return
         try:
             self.enter_credentials()
+            self.click_login_button()
         except NoSuchElementException as e:
             logger.error(f"Could not log in to AIHawk. Element not found: {e}")
         self.handle_security_check()
@@ -39,47 +46,62 @@ class AIHawkAuthenticator:
 
     def enter_credentials(self):
         try:
-            logger.debug("Enter credentials...")
+            email_field = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.ID, "username"))
+            )
+            # ensure the email field is clean:
+            email_field.clear()
+            email_field.send_keys(settings.LINKEDIN_EMAIL)
             
-            check_interval = 4  # Interval to log the current URL
-            elapsed_time = 0
-
-            while True:
-                # Log current URL every 4 seconds and remind the user to log in
-                current_url = self.driver.current_url
-                logger.info(f"Please login on {current_url}")
-
-                # Check if the user is already on the feed page
-                if 'feed' in current_url:
-                    logger.debug("Login successful, redirected to feed page.")
-                    break
-                else:
-                    # Optionally wait for the password field (or any other element you expect on the login page)
-                    WebDriverWait(self.driver, 10).until(
-                        EC.presence_of_element_located((By.ID, "password"))
-                    )
-                    logger.debug("Password field detected, waiting for login completion.")
-
-                time.sleep(check_interval)
-                elapsed_time += check_interval
-
+            password_field = self.driver.find_element(By.ID, "password")
+            password_field.clear()
+            password_field.send_keys(settings.LINKEDIN_PASSWORD)
         except TimeoutException:
-            logger.error("Login form not found. Aborting login.")
+            print("Login form not found. Aborting login.")
+    
+    def click_login_button(self):
+        try:
+            login_button = self.driver.find_element(By.XPATH, '//button[@type="submit"]')
+            login_button.click()
+        except NoSuchElementException:
+            print("Login button not found. Please verify the page structure.")
 
 
     def handle_security_check(self):
         try:
             logger.debug("Handling security check...")
-            WebDriverWait(self.driver, 10).until(
-                EC.url_contains('https://www.linkedin.com/checkpoint/challengesV2/')
-            )
-            logger.warning("Security checkpoint detected. Please complete the challenge.")
+            if 'checkpoint' in self.driver.current_url:
+                logger.warning("Security checkpoint detected. Please complete the challenge.")
+                WEBHOOK.send_request_token("Please provide the verification code to continue.")
+                self.handle_security_checkpoint()
             WebDriverWait(self.driver, 300).until(
                 EC.url_contains('https://www.linkedin.com/feed/')
             )
             logger.info("Security check completed")
         except TimeoutException:
             logger.error("Security check not completed. Please try again later.")
+            
+    def handle_security_checkpoint(self):
+        input_elements = self.driver.find_elements(By.CLASS_NAME, "input_verification_pin")
+        submit_buttons = self.driver.find_elements(By.ID, "email-pin-submit-button")
+        token = TokenManager().wait_for_token()
+        for i, input_element in enumerate(input_elements):
+            try:
+                print(f"Entering key to input {i} with text: {input_element.text if hasattr(input_element, 'text') else 'Não tem texto'}")
+                input_element.send_keys(token)
+            except Exception as e:
+                print(f"Error entering key to input {i}: {e}")
+        # now sleep for a few seconds to allow the user to complete the security check
+        time.sleep(0.2)
+        for i, submit_button in enumerate(submit_buttons):
+            try:
+                logger.debug(f"Clicking submit button {i}")
+                submit_button.click()
+                if 'checkpoint' in self.driver.current_url:
+                    print("still in checkpoint...")
+                    continue
+            except Exception as e:
+                print(f"Error clicking submit button {i}: {e}")
 
     def is_logged_in(self):
         try:

@@ -5,7 +5,6 @@ import time
 from itertools import product
 from pathlib import Path
 
-from inputimeout import inputimeout, TimeoutOccurred
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 
@@ -162,35 +161,14 @@ class AIHawkJobManager:
 
                     time_left = minimum_page_time - time.time()
 
-                    # Ask user if they want to skip waiting, with timeout
                     if time_left > 0:
-                        try:
-                            user_input = inputimeout(
-                                prompt=f"Sleeping for {time_left} seconds. Press 'y' to skip waiting. Timeout 60 seconds : ",
-                                timeout=60).strip().lower()
-                        except TimeoutOccurred:
-                            user_input = ''  # No input after timeout
-                        if user_input == 'y':
-                            logger.debug("User chose to skip waiting.")
-                        else:
-                            logger.debug(f"Sleeping for {time_left} seconds as user chose not to skip.")
-                            time.sleep(time_left)
+                        time.sleep(time_left)
 
                     minimum_page_time = time.time() + minimum_time
 
                     if page_sleep % 5 == 0:
                         sleep_time = random.randint(5, 34)
-                        try:
-                            user_input = inputimeout(
-                                prompt=f"Sleeping for {sleep_time / 60} minutes. Press 'y' to skip waiting. Timeout 60 seconds : ",
-                                timeout=60).strip().lower()
-                        except TimeoutOccurred:
-                            user_input = ''  # No input after timeout
-                        if user_input == 'y':
-                            logger.debug("User chose to skip waiting.")
-                        else:
-                            logger.debug(f"Sleeping for {sleep_time} seconds.")
-                            time.sleep(sleep_time)
+                        time.sleep(sleep_time)
                         page_sleep += 1
             except Exception as e:
                 logger.error(f"Unexpected error during job search: {e}")
@@ -199,33 +177,13 @@ class AIHawkJobManager:
             time_left = minimum_page_time - time.time()
 
             if time_left > 0:
-                try:
-                    user_input = inputimeout(
-                        prompt=f"Sleeping for {time_left} seconds. Press 'y' to skip waiting. Timeout 60 seconds : ",
-                        timeout=60).strip().lower()
-                except TimeoutOccurred:
-                    user_input = ''  # No input after timeout
-                if user_input == 'y':
-                    logger.debug("User chose to skip waiting.")
-                else:
-                    logger.debug(f"Sleeping for {time_left} seconds as user chose not to skip.")
-                    time.sleep(time_left)
+                time.sleep(time_left)
 
             minimum_page_time = time.time() + minimum_time
 
             if page_sleep % 5 == 0:
                 sleep_time = random.randint(50, 90)
-                try:
-                    user_input = inputimeout(
-                        prompt=f"Sleeping for {sleep_time / 60} minutes. Press 'y' to skip waiting: ",
-                        timeout=60).strip().lower()
-                except TimeoutOccurred:
-                    user_input = ''  # No input after timeout
-                if user_input == 'y':
-                    logger.debug("User chose to skip waiting.")
-                else:
-                    logger.debug(f"Sleeping for {sleep_time} seconds.")
-                    time.sleep(sleep_time)
+                time.sleep(sleep_time)
                 page_sleep += 1
 
     def get_jobs_from_page(self):
@@ -513,10 +471,6 @@ class AIHawkJobManager:
         file_name = "failed"
         file_path = self.output_file_directory / f"{file_name}.json"
 
-        if not file_path.exists():
-            with open(file_path, "w", encoding="utf-8") as f:
-                json.dump([], f)
-                
         with open(file_path, 'r', encoding='utf-8') as f:
             try:
                 existing_data = json.load(f)
